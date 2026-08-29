@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
 import { 
-  Send, 
-  Sparkles, 
   ShieldCheck, 
-  MessageSquare, 
-  PhoneCall, 
-  Plane, 
-  Vote, 
   MapPin, 
   Check, 
-  AlertCircle,
+  Sparkles, 
   HelpCircle,
-  Volume2
+  Volume2,
+  PhoneCall,
+  MessageSquare,
+  Plane,
+  Vote,
+  Camera,
+  Mic,
+  FileText
 } from 'lucide-react';
-import { LanguageCode, CitizenReport } from '../../types';
+import { LanguageCode, CitizenReport, DemandHotspot } from '../../types';
 import { processCitizenInput } from '../../services/ai/languagePipeline';
 import { AudioRecorder } from './AudioRecorder';
 import { PhotoUploader } from './PhotoUploader';
@@ -22,7 +23,6 @@ import { WhatsAppSimulatorModal } from './WhatsAppSimulatorModal';
 import { SMSIVRSimulatorModal } from './SMSIVRSimulatorModal';
 import { DiasporaProxyForm } from './DiasporaProxyForm';
 import { MicroBudgetingModal } from './MicroBudgetingModal';
-import { DemandHotspot } from '../../types';
 
 interface CitizenPortalProps {
   selectedLang: LanguageCode;
@@ -35,12 +35,14 @@ export const CitizenPortal: React.FC<CitizenPortalProps> = ({
   onSubmitNewReport,
   hotspots
 }) => {
+  const [activeInputMode, setActiveInputMode] = useState<'SPEAK' | 'TYPE' | 'PHOTO' | 'WHATSAPP' | 'IVR'>('TYPE');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Roads');
+  const [urgencyLevel, setUrgencyLevel] = useState<number>(2); // 1 = Low, 2 = Medium, 3 = High
   const [inputText, setInputText] = useState('');
+  const [locationText, setLocationText] = useState('Village Pipariya, Hoshangabad (Narmadapuram), MP');
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [cvResult, setCvResult] = useState<CVAnalysisResult | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [villageName, setVillageName] = useState('Village Pipariya');
-  const [districtName, setDistrictName] = useState('Hoshangabad (Narmadapuram)');
-  const [stateName, setStateName] = useState('Madhya Pradesh');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [lastSubmittedId, setLastSubmittedId] = useState('');
 
@@ -50,18 +52,48 @@ export const CitizenPortal: React.FC<CitizenPortalProps> = ({
   const [showDiaspora, setShowDiaspora] = useState(false);
   const [showMicroBudget, setShowMicroBudget] = useState(false);
 
+  const categories = ['Roads', 'Water', 'Power', 'Health', 'Schools', 'Sanitation', 'Disaster Relief'];
+
+  const handleAutoDetectLocation = () => {
+    setIsDetectingLocation(true);
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocationText(`Lat: ${pos.coords.latitude.toFixed(4)}, Lng: ${pos.coords.longitude.toFixed(4)} (Auto-detected GPS)`);
+          setIsDetectingLocation(false);
+        },
+        () => {
+          setLocationText('Ward 12, Narmadapuram, Madhya Pradesh');
+          setIsDetectingLocation(false);
+        },
+        { timeout: 3000 }
+      );
+    } else {
+      setTimeout(() => {
+        setLocationText('Varanasi East Ward 4, Uttar Pradesh');
+        setIsDetectingLocation(false);
+      }, 500);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() && !cvResult) return;
 
     // Process via Language Intelligence & DPDP scrubber
     const processed = processCitizenInput(
-      inputText || cvResult?.visualSummary || 'Broken Road Infrastructure',
+      inputText || cvResult?.visualSummary || `${selectedCategory} issue reported`,
       selectedLang
     );
 
     const reportId = `REP-${Math.floor(100 + Math.random() * 900)}`;
     const trackingId = `JS-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    const urgencyMap: Record<number, 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'> = {
+      1: 'LOW',
+      2: 'MEDIUM',
+      3: 'CRITICAL'
+    };
 
     const newReport: CitizenReport = {
       id: reportId,
@@ -75,18 +107,18 @@ export const CitizenPortal: React.FC<CitizenPortalProps> = ({
       piiScrubbed: processed.piiScrubbed,
       scrubbedEntities: processed.scrubbedEntities,
       intent: {
-        category: cvResult?.suggestedCategory || processed.intent.category,
-        urgency: cvResult && cvResult.severityRating > 8 ? 'CRITICAL' : processed.intent.urgency,
+        category: (selectedCategory.toUpperCase() as any) || processed.intent.category,
+        urgency: urgencyMap[urgencyLevel] || processed.intent.urgency,
         sentiment: processed.intent.sentiment,
         estimatedAffectedPop: processed.intent.estimatedAffectedPop
       },
       location: {
         lat: 22.7196 + (Math.random() - 0.5) * 0.05,
         lng: 78.3512 + (Math.random() - 0.5) * 0.05,
-        address: `${villageName}, ${districtName}, ${stateName}`,
-        villageOrWard: villageName,
-        district: districtName,
-        state: stateName
+        address: locationText,
+        villageOrWard: locationText.split(',')[0] || 'Village Pipariya',
+        district: 'Narmadapuram',
+        state: 'Madhya Pradesh'
       },
       channel: 'PWA',
       status: 'SUBMITTED',
@@ -131,194 +163,311 @@ export const CitizenPortal: React.FC<CitizenPortalProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-      {/* Hero Welcome Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-gov-slate to-slate-900 border border-slate-700/80 rounded-2xl p-6 shadow-2xl relative overflow-hidden text-white">
-        <div className="absolute right-0 top-0 opacity-10 w-64 h-64 bg-amber-500 rounded-full blur-3xl pointer-events-none" />
+    <div className="max-w-[1280px] mx-auto px-4 md:px-8 py-8 flex flex-col gap-8">
+      {/* Header & Title Section matching Stitch */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold font-headline-lg text-primary-container">
+            Tell us what your community needs.
+          </h1>
+          <p className="text-sm text-on-surface-variant mt-1">
+            Voice, text, photo, or messaging — automatically encrypted and clustered into National Civic Priorities.
+          </p>
+        </div>
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 mb-2">
-              <Sparkles className="w-3.5 h-3.5" />
-              Multilingual Voice & Photo Ingestion
-            </span>
-            <h2 className="text-2xl font-black tracking-tight text-white">
-              Report Infrastructure & Development Needs
-            </h2>
-            <p className="text-xs text-slate-300 mt-1 max-w-xl">
-              Roads, clean water, electricity, healthcare, schools, or digital connectivity. Voice, text, or photo in your native Indian language — processed with DPDP Act 2023 edge privacy.
-            </p>
-          </div>
-
-          {/* Alternate Ingestion Channels */}
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setShowWhatsApp(true)}
-              className="bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition shadow"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              WhatsApp Bot
-            </button>
-            <button
-              onClick={() => setShowSMSIVR(true)}
-              className="bg-amber-600/90 hover:bg-amber-500 text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition shadow"
-            >
-              <PhoneCall className="w-3.5 h-3.5" />
-              SMS / IVR Call
-            </button>
-            <button
-              onClick={() => setShowDiaspora(true)}
-              className="bg-purple-600/90 hover:bg-purple-500 text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition shadow"
-            >
-              <Plane className="w-3.5 h-3.5" />
-              Migrant Proxy
-            </button>
-            <button
-              onClick={() => setShowMicroBudget(true)}
-              className="bg-cyan-600/90 hover:bg-cyan-500 text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition shadow"
-            >
-              <Vote className="w-3.5 h-3.5" />
-              Micro-Vote
-            </button>
-          </div>
+        {/* Quick Tools & Modals */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setShowDiaspora(true)}
+            className="px-3.5 py-1.5 bg-surface-container-high hover:bg-surface-bright rounded-lg border border-white/10 text-on-surface text-xs font-medium flex items-center gap-1.5 transition-colors"
+          >
+            <Plane className="w-3.5 h-3.5 text-primary" />
+            Diaspora Family Proxy
+          </button>
+          <button
+            onClick={() => setShowMicroBudget(true)}
+            className="px-3.5 py-1.5 bg-surface-container-high hover:bg-surface-bright rounded-lg border border-white/10 text-on-surface text-xs font-medium flex items-center gap-1.5 transition-colors"
+          >
+            <Vote className="w-3.5 h-3.5 text-secondary" />
+            Micro-Budgeting Vote
+          </button>
         </div>
       </div>
 
-      {/* Submission Success Toast */}
-      {isSubmitted && (
-        <div className="bg-emerald-950/80 border border-emerald-700/80 p-4 rounded-2xl flex items-center justify-between text-white animate-fade-in shadow-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-              <Check className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="font-bold text-sm text-emerald-300">Request Successfully Registered!</h4>
-              <p className="text-xs text-slate-300">
-                Tracking ID: <span className="font-mono text-amber-300 font-bold">{lastSubmittedId}</span> • Anonymized & Fused into Demand Hotspot
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setIsSubmitted(false)}
-            className="text-xs text-slate-400 hover:text-white px-3 py-1 bg-slate-900 rounded-lg"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
+      {/* Input Channel Grid (5 Buttons matching Stitch) */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 w-full">
+        {/* Speak */}
+        <button
+          onClick={() => setActiveInputMode('SPEAK')}
+          className={`flex flex-col items-center justify-center p-6 bg-[#1B263B] rounded-xl border-l-2 ${
+            activeInputMode === 'SPEAK' ? 'border-primary-container bg-surface-container-high ring-1 ring-primary-container' : 'border-secondary'
+          } shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] hover:bg-surface-bright/30 transition-all duration-200 gap-2 group`}
+        >
+          <span className="material-symbols-outlined text-4xl text-primary-container group-hover:scale-110 transition-transform">
+            mic
+          </span>
+          <span className="font-title-md text-base md:text-lg text-on-surface font-semibold">Speak</span>
+          <span className="text-[11px] text-on-surface-variant">Bhashini AI Speech</span>
+        </button>
 
-      {/* Main Intake Form */}
-      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white space-y-5 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <h3 className="font-bold text-base text-slate-100 flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-amber-400" />
-            Submit New Infrastructure Need
-          </h3>
-          <span className="text-xs text-slate-400">Step 1 of 2 • Instant Geo-Clustering</span>
-        </div>
+        {/* Type */}
+        <button
+          onClick={() => setActiveInputMode('TYPE')}
+          className={`flex flex-col items-center justify-center p-6 bg-[#1B263B] rounded-xl border-l-2 ${
+            activeInputMode === 'TYPE' ? 'border-primary-container bg-surface-container-high ring-1 ring-primary-container' : 'border-secondary'
+          } shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] hover:bg-surface-bright/30 transition-all duration-200 gap-2 group`}
+        >
+          <span className="material-symbols-outlined text-4xl text-primary-container group-hover:scale-110 transition-transform">
+            keyboard
+          </span>
+          <span className="font-title-md text-base md:text-lg text-on-surface font-semibold">Type</span>
+          <span className="text-[11px] text-on-surface-variant">Any Indian script</span>
+        </button>
 
-        {/* Location Selectors */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-          <div>
-            <label className="block text-slate-400 font-medium mb-1">State</label>
-            <input
-              type="text"
-              value={stateName}
-              onChange={(e) => setStateName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-400"
-            />
-          </div>
-          <div>
-            <label className="block text-slate-400 font-medium mb-1">District</label>
-            <input
-              type="text"
-              value={districtName}
-              onChange={(e) => setDistrictName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-400"
-            />
-          </div>
-          <div>
-            <label className="block text-slate-400 font-medium mb-1">Village / Ward</label>
-            <input
-              type="text"
-              value={villageName}
-              onChange={(e) => setVillageName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-400"
-            />
-          </div>
-        </div>
+        {/* Photo */}
+        <button
+          onClick={() => setActiveInputMode('PHOTO')}
+          className={`flex flex-col items-center justify-center p-6 bg-[#1B263B] rounded-xl border-l-2 ${
+            activeInputMode === 'PHOTO' ? 'border-primary-container bg-surface-container-high ring-1 ring-primary-container' : 'border-secondary'
+          } shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] hover:bg-surface-bright/30 transition-all duration-200 gap-2 group`}
+        >
+          <span className="material-symbols-outlined text-4xl text-primary-container group-hover:scale-110 transition-transform">
+            photo_camera
+          </span>
+          <span className="font-title-md text-base md:text-lg text-on-surface font-semibold">Photo</span>
+          <span className="text-[11px] text-on-surface-variant">Vision Damage AI</span>
+        </button>
 
-        {/* Dual Input Options: Voice & Photo */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Voice Component */}
+        {/* WhatsApp */}
+        <button
+          onClick={() => {
+            setActiveInputMode('WHATSAPP');
+            setShowWhatsApp(true);
+          }}
+          className="flex flex-col items-center justify-center p-6 bg-[#1B263B] rounded-xl border-l-2 border-secondary shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] hover:bg-surface-bright/30 transition-all duration-200 gap-2 group"
+        >
+          <span className="material-symbols-outlined text-4xl text-tertiary group-hover:scale-110 transition-transform">
+            forum
+          </span>
+          <span className="font-title-md text-base md:text-lg text-on-surface font-semibold">WhatsApp</span>
+          <span className="text-[11px] text-on-surface-variant">Zero-app chatbot</span>
+        </button>
+
+        {/* Call IVR */}
+        <button
+          onClick={() => {
+            setActiveInputMode('IVR');
+            setShowSMSIVR(true);
+          }}
+          className="flex flex-col items-center justify-center p-6 bg-[#1B263B] rounded-xl border-l-2 border-secondary shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] hover:bg-surface-bright/30 transition-all duration-200 gap-2 group col-span-2 md:col-span-1"
+        >
+          <span className="material-symbols-outlined text-4xl text-primary group-hover:scale-110 transition-transform">
+            call
+          </span>
+          <span className="font-title-md text-base md:text-lg text-on-surface font-semibold">Call IVR</span>
+          <span className="text-[11px] text-on-surface-variant">1800 Toll-Free Voice</span>
+        </button>
+      </div>
+
+      {/* Embedded Audio or Photo capture panels when selected */}
+      {activeInputMode === 'SPEAK' && (
+        <div className="bg-[#1B263B] p-6 rounded-xl border border-white/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]">
           <AudioRecorder
             selectedLang={selectedLang}
-            onTranscriptComplete={(transcript) => setInputText(transcript)}
-          />
-
-          {/* Photo Component */}
-          <PhotoUploader
-            onCVComplete={(result, url) => {
-              setCvResult(result);
-              setPhotoUrl(url);
+            onTranscriptionComplete={(text) => {
+              setInputText(text);
+              setActiveInputMode('TYPE');
             }}
           />
         </div>
+      )}
 
-        {/* Manual Text Input Area */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Or Type Details in Your Native Language / Hinglish
+      {activeInputMode === 'PHOTO' && (
+        <div className="bg-[#1B263B] p-6 rounded-xl border border-white/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]">
+          <PhotoUploader
+            onAnalysisComplete={(res, url) => {
+              setCvResult(res);
+              setPhotoUrl(url);
+              if (res.suggestedCategory) {
+                const matched = categories.find(c => c.toLowerCase() === res.suggestedCategory.toLowerCase());
+                if (matched) setSelectedCategory(matched);
+              }
+              if (res.visualSummary) {
+                setInputText(res.visualSummary);
+              }
+            }}
+          />
+        </div>
+      )}
+
+      {/* Main Form Section matching Stitch layout */}
+      <form onSubmit={handleSubmit} className="bg-[#1B263B] p-6 md:p-8 rounded-xl shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] flex flex-col gap-6">
+        {/* Category Pills */}
+        <div className="flex flex-col gap-2">
+          <label className="font-label-sm text-xs text-on-surface-variant uppercase tracking-wider font-semibold">
+            Infrastructure Category
           </label>
+          <div className="flex flex-wrap gap-2.5">
+            {categories.map((cat) => (
+              <button
+                type="button"
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-4 py-2 rounded-full border text-sm font-medium transition-all ${
+                  selectedCategory === cat
+                    ? 'bg-primary-container text-on-primary-container border-primary-container font-bold shadow-md'
+                    : 'bg-surface-container border-outline/40 text-on-surface hover:bg-surface-bright'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Location Row with Auto-Detect */}
+        <div className="flex flex-col gap-2 relative">
+          <label className="font-label-sm text-xs text-on-surface-variant uppercase tracking-wider font-semibold">
+            Location / Village / Ward
+          </label>
+          <div className="relative flex items-center">
+            <span className="material-symbols-outlined absolute left-3 text-on-surface-variant text-xl">
+              location_on
+            </span>
+            <input
+              type="text"
+              value={locationText}
+              onChange={(e) => setLocationText(e.target.value)}
+              className="w-full bg-[#0D1B2A] border border-white/10 rounded-lg pl-10 pr-20 py-3 text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-transparent transition-shadow"
+              placeholder="Enter village, panchayat, ward or pin code..."
+            />
+            <button
+              type="button"
+              onClick={handleAutoDetectLocation}
+              disabled={isDetectingLocation}
+              className="absolute right-3 text-secondary font-semibold text-xs uppercase tracking-wider hover:text-tertiary transition-colors bg-surface-container-high px-2.5 py-1 rounded"
+            >
+              {isDetectingLocation ? 'Detecting...' : 'Auto GPS'}
+            </button>
+          </div>
+        </div>
+
+        {/* Urgency Level Slider */}
+        <div className="flex flex-col gap-2">
+          <div className="flex justify-between items-center">
+            <label className="font-label-sm text-xs text-on-surface-variant uppercase tracking-wider font-semibold">
+              Urgency Level
+            </label>
+            <span className="text-xs font-bold text-primary-container">
+              {urgencyLevel === 1 ? 'Standard (Low)' : urgencyLevel === 2 ? 'High Need (Medium)' : 'Critical / Hazardous (High)'}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="1"
+            max="3"
+            step="1"
+            value={urgencyLevel}
+            onChange={(e) => setUrgencyLevel(parseInt(e.target.value))}
+            className="w-full h-2 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary-container"
+          />
+          <div className="flex justify-between text-xs text-on-surface-variant">
+            <span>Low</span>
+            <span>Medium</span>
+            <span className="text-error font-semibold">Critical Hazard</span>
+          </div>
+        </div>
+
+        {/* Description Textarea */}
+        <div className="flex flex-col gap-2">
+          <div className="flex justify-between items-center">
+            <label className="font-label-sm text-xs text-on-surface-variant uppercase tracking-wider font-semibold">
+              Issue Description
+            </label>
+            <span className="text-[11px] text-tertiary flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5" /> DPDP Edge PII Scrubbing Active
+            </span>
+          </div>
           <textarea
-            rows={3}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Type your development request here... (e.g., मुख्य सड़क खड्डों से भरी है, स्कूल बच्चों को परेशानी हो रही है)"
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition"
+            rows={4}
+            className="w-full bg-[#0D1B2A] border border-white/10 rounded-lg p-4 text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-transparent transition-shadow resize-none"
+            placeholder="Describe the issue in your local language (e.g. गाँव की मुख्य सड़क पिछले 2 महीनों से बारिश की वजह से टूट गई है)..."
           />
         </div>
 
-        {/* DPDP Compliance Notice & Submit */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
-          <div className="flex items-center gap-2 text-[11px] text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>DPDP 2023: Phone numbers & Aadhaar are automatically redacted on device before sync.</span>
-          </div>
+        {/* Submit & Action Row */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+          <button
+            type="button"
+            onClick={() => setActiveInputMode(activeInputMode === 'PHOTO' ? 'TYPE' : 'PHOTO')}
+            className="flex items-center gap-2 px-5 py-3 bg-[#0D1B2A] border border-white/10 rounded-lg text-on-surface text-sm font-medium hover:bg-surface-bright transition-colors w-full sm:w-auto justify-center"
+          >
+            <span className="material-symbols-outlined text-lg">add_photo_alternate</span>
+            {photoUrl ? 'Photo Attached ✓' : 'Add Image'}
+          </button>
 
           <button
             type="submit"
-            className="px-6 py-3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition transform active:scale-95 cursor-pointer"
+            disabled={!inputText.trim() && !cvResult}
+            className="flex items-center justify-center gap-2 px-8 py-3 bg-primary-container text-on-primary-container rounded-lg font-bold text-base hover:opacity-90 transition-opacity w-full sm:w-1/2 disabled:opacity-50 shadow-lg"
           >
-            <Send className="w-4 h-4" />
-            Submit Infrastructure Request
+            <span className="material-symbols-outlined text-xl">send</span>
+            Submit Civic Request
           </button>
+        </div>
+
+        {/* Privacy Note */}
+        <div className="flex items-center gap-2 text-tertiary/90 text-xs border-t border-white/5 pt-3">
+          <span className="material-symbols-outlined text-sm">shield</span>
+          <span>Your personal identity and mobile number are stripped under India DPDP Act 2023. Only the civic need is prioritized.</span>
         </div>
       </form>
 
+      {/* Recently Reported Nearby Banner matching Stitch */}
+      <div className="bg-[#1B263B] p-4 rounded-xl border-l-4 border-tertiary-container shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] flex items-center justify-between">
+        <div className="flex flex-col gap-0.5">
+          <span className="font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider">
+            Recently Reported Nearby · Live Verified
+          </span>
+          <span className="font-medium text-sm text-on-surface">
+            {isSubmitted ? `Your report #${lastSubmittedId} has been added to the Live Ledger!` : 'Pothole cluster fixed on Narmadapuram State Highway 22'}
+          </span>
+        </div>
+        <span className="material-symbols-outlined text-tertiary-container bg-tertiary-container/20 rounded-full p-2 text-xl">
+          check_circle
+        </span>
+      </div>
+
       {/* Simulator Modals */}
-      <WhatsAppSimulatorModal
-        isOpen={showWhatsApp}
-        onClose={() => setShowWhatsApp(false)}
-        onSimulateWebhook={handleSimulateChannelWebhook}
-      />
-      <SMSIVRSimulatorModal
-        isOpen={showSMSIVR}
-        onClose={() => setShowSMSIVR(false)}
-        onSimulateWebhook={handleSimulateChannelWebhook}
-      />
-      <DiasporaProxyForm
-        isOpen={showDiaspora}
-        onClose={() => setShowDiaspora(false)}
-        onSubmitProxyReport={(report) => {
-          onSubmitNewReport(report as CitizenReport);
-        }}
-      />
-      <MicroBudgetingModal
-        isOpen={showMicroBudget}
-        onClose={() => setShowMicroBudget(false)}
-        hotspots={hotspots}
-      />
+      {showWhatsApp && (
+        <WhatsAppSimulatorModal
+          onClose={() => setShowWhatsApp(false)}
+          onSimulateReport={(msg) => handleSimulateChannelWebhook(msg, 'WHATSAPP')}
+        />
+      )}
+
+      {showSMSIVR && (
+        <SMSIVRSimulatorModal
+          onClose={() => setShowSMSIVR(false)}
+          onSimulateReport={(msg) => handleSimulateChannelWebhook(msg, 'SMS_IVR')}
+        />
+      )}
+
+      {showDiaspora && (
+        <DiasporaProxyForm
+          onClose={() => setShowDiaspora(false)}
+          onSubmitProxyReport={(rep) => onSubmitNewReport(rep)}
+        />
+      )}
+
+      {showMicroBudget && (
+        <MicroBudgetingModal
+          hotspots={hotspots}
+          onClose={() => setShowMicroBudget(false)}
+        />
+      )}
     </div>
   );
 };

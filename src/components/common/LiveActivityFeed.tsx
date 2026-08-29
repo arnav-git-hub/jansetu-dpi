@@ -23,10 +23,10 @@ const CATEGORY_ICON: Record<string, string> = {
 };
 
 const URGENCY_COLOR: Record<string, string> = {
-  CRITICAL: 'text-red-400 bg-red-500/10 border-red-500/30',
-  HIGH: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-  MEDIUM: 'text-sky-400 bg-sky-500/10 border-sky-500/30',
-  LOW: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+  CRITICAL: 'text-error bg-error-container/20 border-error/40',
+  HIGH: 'text-primary-container bg-primary-container/20 border-primary-container/40',
+  MEDIUM: 'text-secondary bg-secondary-container/20 border-secondary/40',
+  LOW: 'text-tertiary bg-tertiary-container/20 border-tertiary-container/40',
 };
 
 function timeAgo(iso: string): string {
@@ -58,7 +58,7 @@ function generateRandomActivity(): LiveActivityItem {
     category: CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)],
     urgency: URGENCIES[Math.floor(Math.random() * URGENCIES.length)],
     piiScrubbed: true,
-    hotspotId: `HOTSPOT-0${Math.ceil(Math.random() * 6)}`,
+    anonymizedHash: Math.random().toString(36).substring(2, 10),
   };
 }
 
@@ -67,86 +67,80 @@ interface LiveActivityFeedProps {
 }
 
 export const LiveActivityFeed: React.FC<LiveActivityFeedProps> = ({ maxItems = 10 }) => {
-  const [items, setItems] = useState<LiveActivityItem[]>([...INITIAL_LIVE_ACTIVITY]);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [items, setItems] = useState<LiveActivityItem[]>(INITIAL_LIVE_ACTIVITY);
+  const [newArrivalId, setNewArrivalId] = useState<string | null>(null);
+  const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
       const newItem = generateRandomActivity();
-      setItems((prev) => [newItem, ...prev].slice(0, 50));
-    }, 4500 + Math.random() * 3000);
-    return () => clearInterval(interval);
-  }, []);
+      setNewArrivalId(newItem.id);
+      setItems((prev) => [newItem, ...prev.slice(0, maxItems - 1)]);
+    }, 4500);
 
-  const displayed = items.slice(0, maxItems);
+    return () => clearInterval(interval);
+  }, [maxItems]);
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl text-white">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-950/60">
+    <div className="bg-[#1B263B] border border-white/10 rounded-xl p-5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] space-y-3">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Zap className="w-4 h-4 text-amber-400" />
-          <span className="font-bold text-sm">Live Citizen Report Feed</span>
-          <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse inline-block" />
-            LIVE
-          </span>
+          <Zap className="w-4 h-4 text-primary-container animate-pulse" />
+          <h4 className="font-bold text-sm font-headline-lg text-on-surface">
+            Live Multilingual Citizen Ingestion Stream
+          </h4>
         </div>
-        <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-          <Wifi className="w-3 h-3 text-sky-400" />
-          <span>{items.length} reports in pipeline</span>
+        <div className="flex items-center gap-2 text-[11px] text-on-surface-variant font-mono">
+          <span className="w-2 h-2 bg-tertiary-container rounded-full animate-ping" />
+          <span>Real-time DPDP PII Scrubbing Active</span>
         </div>
       </div>
 
-      {/* Feed items */}
-      <div ref={containerRef} className="divide-y divide-slate-800/60 max-h-72 overflow-y-auto">
-        {displayed.map((item, idx) => (
-          <div
-            key={item.id}
-            className={`flex items-center gap-3 px-4 py-2.5 text-xs transition-all ${
-              idx === 0 ? 'bg-amber-500/5 border-l-2 border-amber-500' : 'hover:bg-slate-800/40'
-            }`}
-          >
-            {/* Category icon */}
-            <span className="text-base shrink-0">{CATEGORY_ICON[item.category]}</span>
+      <div ref={feedRef} className="space-y-2 max-h-80 overflow-y-auto terminal-scroll pr-1 text-xs">
+        {items.map((item) => {
+          const isNew = item.id === newArrivalId;
+          const urgencyCls = URGENCY_COLOR[item.urgency] || URGENCY_COLOR.MEDIUM;
+          const chIcon = CHANNEL_ICON[item.channel] || '📱';
+          const catIcon = CATEGORY_ICON[item.category] || '🏛️';
+          const langLabel = getLanguageName(item.language);
 
-            {/* Main content */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-semibold text-slate-200 truncate">{item.category.replace('_', ' ')}</span>
-                <span className="text-slate-500">·</span>
-                <span className="text-slate-400 truncate">📍 {item.district}, {item.state}</span>
-              </div>
-              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                <span className="text-slate-500">{CHANNEL_ICON[item.channel]} {item.channel.replace('_', ' ')}</span>
-                <span className="text-slate-600">·</span>
-                <span className="text-slate-500">{getLanguageName(item.language as any).split(' ')[0]}</span>
-                {item.piiScrubbed && (
-                  <>
-                    <span className="text-slate-600">·</span>
-                    <span className="text-emerald-500 flex items-center gap-0.5">
-                      <ShieldCheck className="w-3 h-3" /> PII Scrubbed
+          return (
+            <div
+              key={item.id}
+              className={`p-3 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition-all ${
+                isNew
+                  ? 'bg-surface-container-high border-primary-container ring-1 ring-primary-container animate-fade-in'
+                  : 'bg-surface-container-low border-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-base shrink-0">{chIcon}</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-on-surface">
+                      {catIcon} {item.district}, {item.state}
                     </span>
-                  </>
-                )}
+                    <span className="text-[10px] bg-surface-container text-on-surface-variant px-1.5 py-0.5 rounded font-mono">
+                      {langLabel}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-on-surface-variant font-mono">
+                    Hash: #{item.anonymizedHash} · Channel: {item.channel}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase font-mono ${urgencyCls}`}>
+                  {item.urgency}
+                </span>
+                <span className="text-[10px] text-on-surface-variant/80 font-mono">
+                  {timeAgo(item.timestamp)}
+                </span>
               </div>
             </div>
-
-            {/* Urgency + time */}
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${URGENCY_COLOR[item.urgency]}`}>
-                {item.urgency}
-              </span>
-              <span className="text-[10px] text-slate-600 font-mono">{timeAgo(item.timestamp)}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Footer */}
-      <div className="px-4 py-2 bg-slate-950/60 border-t border-slate-800 text-[10px] text-slate-500 flex justify-between">
-        <span>Auto-clustered via DBSCAN · Edge PII stripped</span>
-        <span className="text-slate-600">Scroll for history ↑</span>
+          );
+        })}
       </div>
     </div>
   );

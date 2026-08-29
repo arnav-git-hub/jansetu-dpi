@@ -3,10 +3,11 @@ import { Camera, AlertCircle, Sparkles, Check, Image as ImageIcon } from 'lucide
 import { analyzeInfrastructureImage, CVAnalysisResult } from '../../services/ai/computerVision';
 
 interface PhotoUploaderProps {
-  onCVComplete: (result: CVAnalysisResult, photoUrl: string) => void;
+  onCVComplete?: (result: CVAnalysisResult, photoUrl: string) => void;
+  onAnalysisComplete?: (result: CVAnalysisResult, photoUrl: string) => void;
 }
 
-export const PhotoUploader: React.FC<PhotoUploaderProps> = ({ onCVComplete }) => {
+export const PhotoUploader: React.FC<PhotoUploaderProps> = ({ onCVComplete, onAnalysisComplete }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<CVAnalysisResult | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -29,6 +30,11 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({ onCVComplete }) =>
     }
   ];
 
+  const notifyComplete = (result: CVAnalysisResult, url: string) => {
+    if (onAnalysisComplete) onAnalysisComplete(result, url);
+    if (onCVComplete) onCVComplete(result, url);
+  };
+
   const handleSelectSamplePhoto = async (sample: { title: string; url: string; category: string }) => {
     setPhotoPreview(sample.url);
     setIsAnalyzing(true);
@@ -37,7 +43,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({ onCVComplete }) =>
     const result = await analyzeInfrastructureImage(sample.category);
     setAnalysisResult(result);
     setIsAnalyzing(false);
-    onCVComplete(result, sample.url);
+    notifyComplete(result, sample.url);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,96 +57,84 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({ onCVComplete }) =>
       const result = await analyzeInfrastructureImage(file);
       setAnalysisResult(result);
       setIsAnalyzing(false);
-      onCVComplete(result, previewUrl);
+      notifyComplete(result, previewUrl);
     }
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-white">
-      <div className="flex items-center justify-between mb-3">
+    <div className="bg-[#0D1B2A] border border-white/10 rounded-xl p-5 text-on-surface space-y-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Camera className="w-4 h-4 text-amber-400" />
-          <span className="text-xs font-semibold text-slate-300">
-            Photo Intake & Computer Vision Severity AI
-          </span>
+          <Camera className="w-5 h-5 text-primary-container" />
+          <h4 className="font-bold text-sm font-headline-lg text-on-surface">Computer Vision Damage Intelligence</h4>
         </div>
-        <span className="text-[10px] text-amber-300 bg-amber-950 border border-amber-800 px-2 py-0.5 rounded-full font-medium">
-          Low-Literacy Friendly
+        <span className="text-[10px] bg-tertiary/15 text-tertiary border border-tertiary/30 px-2 py-0.5 rounded font-mono font-bold">
+          Edge AI Vision
         </span>
       </div>
 
-      {/* Preset Photo Sampler for Instant Hackathon Demo */}
-      <div className="mb-3">
-        <p className="text-[11px] text-slate-400 mb-2">Select a sample photo or upload your own:</p>
-        <div className="grid grid-cols-3 gap-2">
-          {samplePhotos.map((s, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => handleSelectSamplePhoto(s)}
-              className={`relative rounded-lg overflow-hidden border transition text-left group ${
-                photoPreview === s.url ? 'border-amber-400 ring-2 ring-amber-500/30' : 'border-slate-800 hover:border-slate-600'
-              }`}
-            >
-              <img src={s.url} alt={s.title} className="w-full h-16 object-cover group-hover:scale-105 transition" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent p-1 flex items-end">
-                <span className="text-[10px] font-medium text-white truncate">{s.title}</span>
+      <p className="text-xs text-on-surface-variant">
+        Upload or take a photo of broken infrastructure. The model automatically classifies damage severity, structural risks, and recommended scheme category.
+      </p>
+
+      {/* Upload Drop Area or Sample Clicker */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Upload Input */}
+        <label className="border-2 border-dashed border-white/15 hover:border-primary-container/60 rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer transition bg-surface-container-low hover:bg-surface-container-high/40">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <Camera className="w-8 h-8 text-primary-container mb-2" />
+          <span className="font-bold text-xs text-on-surface font-headline-lg">Take Photo / Upload Image</span>
+          <span className="text-[10px] text-on-surface-variant mt-0.5">JPEG, PNG from mobile or camera</span>
+        </label>
+
+        {/* Sample Photo Presets for Quick Testing */}
+        <div className="space-y-2">
+          <span className="text-[10px] text-on-surface-variant uppercase font-mono block">Or Test with Sample Incident:</span>
+          <div className="grid grid-cols-3 gap-2">
+            {samplePhotos.map((s, i) => (
+              <div
+                key={i}
+                onClick={() => handleSelectSamplePhoto(s)}
+                className="cursor-pointer border border-white/10 rounded-lg overflow-hidden group hover:border-primary-container transition bg-surface-container-low"
+              >
+                <img src={s.url} alt={s.title} className="w-full h-12 object-cover group-hover:scale-105 transition" />
+                <span className="text-[9px] text-on-surface-variant block p-1 truncate text-center">{s.title}</span>
               </div>
-            </button>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Custom Upload Input */}
-      <div className="relative border-2 border-dashed border-slate-700 hover:border-amber-500/50 rounded-xl p-3 text-center transition bg-slate-950/40">
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileUpload}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-        />
-        <div className="flex items-center justify-center gap-2 text-xs text-slate-300">
-          <ImageIcon className="w-4 h-4 text-amber-400" />
-          <span>Upload photo from device / camera</span>
-        </div>
-      </div>
-
-      {/* Analyzing Loader */}
+      {/* Analysis Result */}
       {isAnalyzing && (
-        <div className="mt-3 p-4 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center gap-3">
-          <Sparkles className="w-5 h-5 text-amber-400 animate-spin" />
-          <span className="text-xs text-amber-300 font-medium">
-            CV Model Extracting Severity Index & Structural Hazards...
-          </span>
+        <div className="p-4 bg-surface-container-low rounded-xl border border-white/5 flex items-center justify-center gap-2 text-xs text-primary-container">
+          <Sparkles className="w-4 h-4 animate-spin" />
+          <span>Analyzing photo with Edge Computer Vision Model...</span>
         </div>
       )}
 
-      {/* CV Results Breakdown */}
-      {analysisResult && !isAnalyzing && (
-        <div className="mt-3 p-3 bg-slate-800/90 border border-slate-700 rounded-xl space-y-2 text-xs">
+      {analysisResult && (
+        <div className="p-4 bg-surface-container-low rounded-xl border border-tertiary-container/40 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="font-bold text-amber-400 flex items-center gap-1">
-              <Check className="w-4 h-4 text-emerald-400" />
-              AI CV Hazard Extraction
+            <span className="font-bold text-xs text-tertiary flex items-center gap-1 font-headline-lg">
+              <Check className="w-4 h-4" /> AI Damage Analysis Complete
             </span>
-            <span className="bg-red-500/20 text-red-300 border border-red-500/30 text-[11px] font-bold px-2 py-0.5 rounded-full">
+            <span className="text-xs font-mono font-bold text-primary-container">
               Severity: {analysisResult.severityRating}/10
             </span>
           </div>
-
-          <p className="text-slate-300 font-medium">{analysisResult.visualSummary}</p>
-
-          <div className="flex flex-wrap gap-1 pt-1">
-            {analysisResult.detectedObjects.map((obj, i) => (
-              <span key={i} className="bg-slate-900 text-slate-300 border border-slate-700 text-[10px] px-2 py-0.5 rounded">
-                {obj}
+          <p className="text-xs text-on-surface">{analysisResult.visualSummary}</p>
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {analysisResult.detectedAnomalies.map((a, i) => (
+              <span key={i} className="text-[10px] bg-[#071327] text-on-surface px-2 py-0.5 rounded border border-white/10">
+                🔍 {a}
               </span>
             ))}
-          </div>
-
-          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-700/60">
-            <span>Hazard Type: <strong className="text-slate-200">{analysisResult.hazardType}</strong></span>
-            <span>CV Confidence: <strong className="text-emerald-400">{(analysisResult.confidence * 100).toFixed(0)}%</strong></span>
           </div>
         </div>
       )}

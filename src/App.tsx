@@ -123,11 +123,11 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 font-sans text-slate-100 flex flex-col selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-background text-on-surface font-sans flex flex-col antialiased selection:bg-primary-container selection:text-background">
       {/* Header Navigation */}
       <Header
-        activeTab={activeTab as any}
-        setActiveTab={setActiveTab as any}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         selectedLang={selectedLang}
         setSelectedLang={setSelectedLang}
         isOnline={isOnline}
@@ -137,9 +137,9 @@ export const App: React.FC = () => {
       />
 
       {/* Main App Content View Switcher */}
-      <main className="flex-1">
+      <main className="flex-1 pb-16 md:pb-0">
         {activeTab === 'CITIZEN' && (
-          <div className="max-w-4xl mx-auto px-4 pt-5 pb-2">
+          <div className="max-w-[1280px] mx-auto px-4 md:px-8 pt-5">
             <NationalImpactBanner hotspots={hotspots} />
           </div>
         )}
@@ -166,7 +166,7 @@ export const App: React.FC = () => {
         {activeTab === 'PUBLIC_PORTAL' && (
           <>
             <PublicPortal hotspots={hotspots} />
-            <div className="max-w-7xl mx-auto px-4 pb-6">
+            <div className="max-w-[1440px] mx-auto px-4 md:px-8 pb-6">
               <LiveActivityFeed maxItems={12} />
             </div>
           </>
@@ -179,16 +179,69 @@ export const App: React.FC = () => {
         {activeTab === 'PRIVACY_DASHBOARD' && <PrivacyDashboard />}
       </main>
 
+      {/* Bottom Navigation Bar for Mobile matching Stitch Design */}
+      <nav className="md:hidden flex justify-around items-center w-full py-2.5 bg-surface-container border-t border-white/10 fixed bottom-0 left-0 right-0 z-50 shadow-2xl">
+        <button
+          onClick={() => setActiveTab('CITIZEN')}
+          className={`flex flex-col items-center gap-0.5 transition-colors ${
+            activeTab === 'CITIZEN' ? 'text-primary-container font-bold' : 'text-on-surface-variant hover:text-primary'
+          }`}
+        >
+          <span className="material-symbols-outlined text-xl">home</span>
+          <span className="text-[10px] uppercase tracking-wider">Citizen</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('POLICYMAKER')}
+          className={`flex flex-col items-center gap-0.5 transition-colors ${
+            activeTab === 'POLICYMAKER' ? 'text-primary-container font-bold' : 'text-on-surface-variant hover:text-primary'
+          }`}
+        >
+          <span className="material-symbols-outlined text-xl">tune</span>
+          <span className="text-[10px] uppercase tracking-wider">Command</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('PUBLIC_PORTAL')}
+          className={`flex flex-col items-center gap-0.5 transition-colors ${
+            activeTab === 'PUBLIC_PORTAL' ? 'text-primary-container font-bold' : 'text-on-surface-variant hover:text-primary'
+          }`}
+        >
+          <span className="material-symbols-outlined text-xl">public</span>
+          <span className="text-[10px] uppercase tracking-wider">Public</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('AUDIT_LEDGER')}
+          className={`flex flex-col items-center gap-0.5 transition-colors ${
+            activeTab === 'AUDIT_LEDGER' ? 'text-primary-container font-bold' : 'text-on-surface-variant hover:text-primary'
+          }`}
+        >
+          <span className="material-symbols-outlined text-xl">history_edu</span>
+          <span className="text-[10px] uppercase tracking-wider">Ledger</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('PRIVACY_DASHBOARD')}
+          className={`flex flex-col items-center gap-0.5 transition-colors ${
+            activeTab === 'PRIVACY_DASHBOARD' ? 'text-primary-container font-bold' : 'text-on-surface-variant hover:text-primary'
+          }`}
+        >
+          <span className="material-symbols-outlined text-xl">shield</span>
+          <span className="text-[10px] uppercase tracking-wider">DPDP</span>
+        </button>
+      </nav>
+
       {/* Footer */}
-      <footer className="bg-slate-950 border-t border-slate-800/80 py-4 px-6 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
+      <footer className="bg-surface-container-lowest border-t border-white/5 py-4 px-6 text-center text-xs text-on-surface-variant">
+        <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
           <span>
             JanSetu (जनसेतु) — AI for Digital Public Infrastructure · UNDP DPG #IND-2026-JS · DPDP Act 2023 Compliant · SDG-Aligned · Apache 2.0
           </span>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-slate-400 italic">"Aapki awaaz, desh ki priority."</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-amber-400 font-semibold">🏆 Hackathon Track 1</span>
+            <span className="font-mono text-on-surface-variant italic">"Aapki awaaz, desh ki priority."</span>
+            <span className="text-white/20">·</span>
+            <span className="text-primary-container font-semibold">🏆 National DPI Civic Engine</span>
           </div>
         </div>
       </footer>

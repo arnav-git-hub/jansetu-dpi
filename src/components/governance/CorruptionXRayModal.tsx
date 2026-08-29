@@ -4,11 +4,11 @@ import { SEEDED_CORRUPTION_CASES } from '../../data/seedData';
 import { CorruptionCase } from '../../types';
 
 interface CorruptionXRayModalProps {
-  isOpen: boolean;
+  isOpen?: boolean;
   onClose: () => void;
 }
 
-export const CorruptionXRayModal: React.FC<CorruptionXRayModalProps> = ({ isOpen, onClose }) => {
+export const CorruptionXRayModal: React.FC<CorruptionXRayModalProps> = ({ isOpen = true, onClose }) => {
   const [selectedCase, setSelectedCase] = useState<CorruptionCase>(SEEDED_CORRUPTION_CASES[0]);
   const [isFrozen, setIsFrozen] = useState(false);
 
@@ -19,24 +19,24 @@ export const CorruptionXRayModal: React.FC<CorruptionXRayModalProps> = ({ isOpen
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-red-900/60 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl p-6 text-white max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-[#030e22]/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-[#142034] border border-error/40 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl p-6 text-on-surface max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4 shrink-0">
+        <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4 shrink-0">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="w-6 h-6 text-red-500 animate-pulse" />
+            <ShieldAlert className="w-6 h-6 text-error animate-pulse" />
             <div>
-              <h3 className="font-extrabold text-base text-red-400">Corruption X-Ray: AI Audit Agent</h3>
-              <p className="text-[11px] text-slate-400">Cross-checking contractor claimed photos against Sentinel-2 satellite imagery & citizen reports</p>
+              <h3 className="font-bold text-base text-error font-headline-lg">Corruption X-Ray: AI Forensic Audit</h3>
+              <p className="text-[11px] text-on-surface-variant">Cross-checking contractor claimed photos against Sentinel-2 satellite imagery & citizen reports</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-slate-800 rounded-lg text-slate-400">
+          <button onClick={onClose} className="p-1 hover:bg-surface-container-high rounded-lg text-on-surface-variant hover:text-on-surface">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Case Selector */}
-        <div className="flex gap-2 mb-4 shrink-0 overflow-x-auto">
+        <div className="flex gap-2 mb-4 shrink-0 overflow-x-auto terminal-scroll">
           {SEEDED_CORRUPTION_CASES.map((c) => (
             <button
               key={c.id}
@@ -44,10 +44,10 @@ export const CorruptionXRayModal: React.FC<CorruptionXRayModalProps> = ({ isOpen
                 setSelectedCase(c);
                 setIsFrozen(false);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border text-left truncate ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition border text-left truncate ${
                 selectedCase.id === c.id
-                  ? 'bg-red-950 border-red-500 text-red-300'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                  ? 'bg-error-container/30 border-error text-error'
+                  : 'bg-[#0D1B2A] border-white/10 text-on-surface-variant hover:text-on-surface'
               }`}
             >
               {c.projectTitle}
@@ -56,103 +56,79 @@ export const CorruptionXRayModal: React.FC<CorruptionXRayModalProps> = ({ isOpen
         </div>
 
         {/* Audit Details Body */}
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex-1 overflow-y-auto terminal-scroll space-y-4 pr-1 text-xs">
+          <div className="bg-[#0D1B2A] p-4 rounded-xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
-              <h4 className="font-bold text-sm text-white">{selectedCase.projectTitle}</h4>
-              <p className="text-slate-400">Contractor: <strong className="text-slate-200">{selectedCase.contractorName}</strong> ({selectedCase.location})</p>
-              <p className="text-slate-400">Disbursed Amount: <strong className="text-amber-400">₹{selectedCase.amountDisbursedLakhs} Lakhs</strong></p>
+              <span className="text-[10px] text-on-surface-variant uppercase font-mono block">Contractor Entity</span>
+              <h4 className="font-bold text-on-surface text-sm font-headline-lg">{selectedCase.contractorName}</h4>
+              <p className="text-on-surface-variant">District: {selectedCase.district}</p>
             </div>
-
-            <div className="text-right">
-              <span className="text-[10px] text-slate-400 uppercase font-mono block">AI Fraud Probability</span>
-              <span className="text-2xl font-black font-mono text-red-500">
-                {selectedCase.aiFraudProbabilityPercent.toFixed(1)}%
-              </span>
-            </div>
-          </div>
-
-          {/* Side-by-Side Photo & Satellite X-Ray Comparator */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Contractor Submitted Photo */}
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-              <div className="flex justify-between items-center text-xs font-semibold text-slate-300">
-                <span>Contractor Submitted Photo</span>
-                <span className="text-red-400 bg-red-950 border border-red-800 px-2 py-0.5 rounded text-[10px]">
-                  Claimed: 100% Complete
-                </span>
+            <div className="flex gap-3">
+              <div className="text-right">
+                <span className="text-[10px] text-on-surface-variant uppercase font-mono block">Disbursed Funds</span>
+                <span className="font-bold text-on-surface font-mono">₹{selectedCase.fundsDisbursedLakhs} Lakhs</span>
               </div>
-              <div className="relative rounded-lg overflow-hidden border border-slate-800 h-44">
-                <img
-                  src={selectedCase.contractorPhotoUrl}
-                  alt="Contractor claim"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-slate-950/20" />
-              </div>
-            </div>
-
-            {/* Satellite Imagery Verification */}
-            <div className="bg-slate-950 p-3 rounded-xl border border-red-900/60 space-y-2">
-              <div className="flex justify-between items-center text-xs font-semibold text-red-400">
-                <span className="flex items-center gap-1">
-                  <Eye className="w-3.5 h-3.5" />
-                  Sentinel-2 Satellite Verification Overlay
-                </span>
-                <span className="text-amber-400 font-mono text-[10px]">Pass 2026-08-20</span>
-              </div>
-              <div className="relative rounded-lg overflow-hidden border border-red-800 h-44">
-                <img
-                  src={selectedCase.satellitePhotoUrl}
-                  alt="Satellite pass"
-                  className="w-full h-full object-cover"
-                />
-                {/* Simulated Computer Vision Discrepancy Heatmap Overlay */}
-                <div className="absolute inset-0 bg-red-600/30 backdrop-hue-rotate-90 flex items-center justify-center">
-                  <span className="bg-red-950/90 text-red-300 border border-red-500 px-3 py-1 rounded-full text-[11px] font-mono font-bold animate-pulse">
-                    ⚠️ SATELLITE OPTICAL MISMATCH DETECTED
-                  </span>
-                </div>
+              <div className="text-right">
+                <span className="text-[10px] text-on-surface-variant uppercase font-mono block">Anomaly Score</span>
+                <span className="font-bold text-error text-base font-mono">{selectedCase.anomalyScore} / 100</span>
               </div>
             </div>
           </div>
 
-          {/* AI Discrepancies List */}
-          <div className="p-4 bg-red-950/40 border border-red-800/80 rounded-xl space-y-2">
-            <h4 className="font-bold text-red-400 text-xs flex items-center gap-1">
-              <AlertTriangle className="w-4 h-4" />
-              Detected Fraud Discrepancies
-            </h4>
-            <ul className="list-disc list-inside text-slate-200 space-y-1">
-              {selectedCase.detectedDiscrepancies.map((disc, idx) => (
-                <li key={idx} className="leading-relaxed">{disc}</li>
-              ))}
-            </ul>
+          {/* Triangulation Evidence */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="p-3 bg-surface-container-low rounded-xl border border-white/5 space-y-1">
+              <span className="text-primary-container font-semibold block text-[11px]">1. Contractor Photo Claim</span>
+              <p className="text-on-surface-variant text-[11px]">{selectedCase.contractorClaimPhotoDesc}</p>
+              <span className="text-[10px] text-primary-container block font-mono">Submitted: 100% Complete</span>
+            </div>
+
+            <div className="p-3 bg-surface-container-low border border-error/30 rounded-xl space-y-1">
+              <span className="text-error font-semibold block text-[11px]">2. Sentinel Satellite Pass</span>
+              <p className="text-on-surface-variant text-[11px]">{selectedCase.satelliteVerificationResult}</p>
+              <span className="text-[10px] text-error block font-mono">Optical match: &lt; 15%</span>
+            </div>
+
+            <div className="p-3 bg-surface-container-low border border-secondary/30 rounded-xl space-y-1">
+              <span className="text-secondary font-semibold block text-[11px]">3. Ground Citizen Reports</span>
+              <p className="text-on-surface-variant text-[11px]">{selectedCase.citizenGroundReportsSummary}</p>
+              <span className="text-[10px] text-secondary block font-mono">42 Reports confirming zero road</span>
+            </div>
+          </div>
+
+          {/* Anomaly Details */}
+          <div className="p-4 bg-error-container/10 border border-error/30 rounded-xl text-error space-y-1">
+            <div className="font-bold flex items-center gap-1.5 text-xs font-headline-lg">
+              <AlertTriangle className="w-4 h-4" /> Flagged Forensic Discrepancy
+            </div>
+            <p className="text-[11px] text-on-surface leading-relaxed">{selectedCase.anomalyDetails}</p>
           </div>
         </div>
 
-        {/* Modal Footer Actions */}
-        <div className="flex justify-between items-center border-t border-slate-800 pt-3 mt-3 shrink-0">
-          <div className="text-xs text-slate-400">
-            Status: <strong className="text-amber-400">{isFrozen ? 'FUNDS_FROZEN' : selectedCase.auditFlagStatus}</strong>
+        {/* Actions */}
+        <div className="mt-4 pt-3 border-t border-white/10 flex justify-between items-center text-xs shrink-0">
+          <div className="flex items-center gap-1.5">
+            {isFrozen ? (
+              <span className="text-error font-bold flex items-center gap-1 bg-error-container/20 px-3 py-1.5 rounded-lg border border-error/40">
+                <Lock className="w-3.5 h-3.5" /> Direct Benefit / Treasury Escrow Frozen!
+              </span>
+            ) : (
+              <span className="text-on-surface-variant">Recommended Action: Instant automated treasury freeze.</span>
+            )}
           </div>
 
           <div className="flex gap-2">
-            <button
-              onClick={handleFreezeFunds}
-              disabled={isFrozen}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                isFrozen
-                  ? 'bg-emerald-600 text-white cursor-default'
-                  : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30'
-              }`}
-            >
-              {isFrozen ? <CheckCircle2 className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-              {isFrozen ? 'Contractor Escrow Frozen' : 'Trigger Automated Escrow Freeze'}
-            </button>
+            {!isFrozen && (
+              <button
+                onClick={handleFreezeFunds}
+                className="px-4 py-2 bg-error-container hover:opacity-90 text-on-error-container rounded-lg font-bold flex items-center gap-1.5 transition shadow"
+              >
+                <Lock className="w-3.5 h-3.5" /> Auto-Freeze Escrow Account
+              </button>
+            )}
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium"
+              className="px-4 py-2 bg-surface-container-high hover:bg-surface-bright text-on-surface rounded-lg font-medium border border-white/10"
             >
               Close
             </button>

@@ -3,18 +3,25 @@ import { Mic, MicOff, Volume2, CheckCircle2, RefreshCw } from 'lucide-react';
 import { LanguageCode } from '../../types';
 
 interface AudioRecorderProps {
-  onTranscriptComplete: (transcript: string) => void;
+  onTranscriptComplete?: (transcript: string) => void;
+  onTranscriptionComplete?: (transcript: string) => void;
   selectedLang: LanguageCode;
 }
 
 export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   onTranscriptComplete,
+  onTranscriptionComplete,
   selectedLang
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [transcript, setTranscript] = useState('');
   const [waveformBars, setWaveformBars] = useState<number[]>([20, 40, 60, 30, 80, 50, 70, 40, 30, 60, 45, 55]);
+
+  const notifyComplete = (text: string) => {
+    if (onTranscriptionComplete) onTranscriptionComplete(text);
+    if (onTranscriptComplete) onTranscriptComplete(text);
+  };
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -58,8 +65,8 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       }
       setTranscript(sampleTranscript);
       setIsRecording(false);
-      onTranscriptComplete(sampleTranscript);
-    }, 4500);
+      notifyComplete(sampleTranscript);
+    }, 3500);
   };
 
   const stopRecording = () => {
@@ -67,75 +74,74 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-white">
-      <div className="flex items-center justify-between mb-3">
+    <div className="bg-[#0D1B2A] border border-white/10 rounded-xl p-5 text-on-surface space-y-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Volume2 className="w-4 h-4 text-amber-400" />
-          <span className="text-xs font-semibold text-slate-300">
-            Voice Input (On-Device Local Audio Processing)
-          </span>
+          <Volume2 className="w-5 h-5 text-primary-container" />
+          <h4 className="font-bold text-sm font-headline-lg text-on-surface">Bhashini AI Speech Ingestion Engine</h4>
         </div>
-        <span className="text-[10px] text-emerald-400 bg-emerald-950 border border-emerald-800 px-2 py-0.5 rounded-full font-medium">
-          DPDP Edge Minimization
+        <span className="text-[10px] bg-secondary/15 text-secondary border border-secondary/30 px-2 py-0.5 rounded font-mono font-bold uppercase">
+          {selectedLang.toUpperCase()} Mode Active
         </span>
       </div>
 
-      <div className="flex flex-col items-center justify-center p-6 bg-slate-950/60 rounded-xl border border-slate-800/80">
+      <p className="text-xs text-on-surface-variant">
+        Speak naturally in your dialect. The engine automatically filters out background noise, transcribes to text, and scrubs personal phone numbers/names under DPDP Act 2023.
+      </p>
+
+      {/* Recording Control Button & Waveform */}
+      <div className="flex flex-col items-center justify-center p-6 bg-surface-container-low rounded-xl border border-white/5 space-y-4">
         {!isRecording ? (
           <button
             type="button"
             onClick={startRecording}
-            className="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20 transform active:scale-95 transition"
+            className="w-16 h-16 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-lg hover:opacity-90 transition transform active:scale-95"
           >
-            <Mic className="w-8 h-8 text-slate-950" />
+            <Mic className="w-8 h-8" />
           </button>
         ) : (
           <button
             type="button"
             onClick={stopRecording}
-            className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/30 animate-pulse transform active:scale-95 transition"
+            className="w-16 h-16 rounded-full bg-error text-on-error flex items-center justify-center shadow-lg animate-pulse"
           >
-            <MicOff className="w-8 h-8 text-white" />
+            <MicOff className="w-8 h-8" />
           </button>
         )}
 
-        <div className="mt-3 text-center">
-          <p className="text-xs text-slate-400 font-medium">
-            {isRecording
-              ? `Listening in ${selectedLang.toUpperCase()}... (${recordingSeconds}s)`
-              : 'Tap microphone and speak in your language'}
+        <div className="text-center">
+          <p className="text-xs font-bold text-on-surface font-headline-lg">
+            {isRecording ? `Recording Voice (${recordingSeconds}s)...` : 'Click Microphone to Speak'}
           </p>
+          <span className="text-[10px] text-on-surface-variant">Hindi, Marathi, Tamil, Telugu, Bengali & 9 other languages</span>
         </div>
 
-        {/* Live Audio Waveform Animation */}
+        {/* Live Audio Visualizer */}
         {isRecording && (
-          <div className="flex items-center justify-center gap-1 mt-4 h-8">
-            {waveformBars.map((height, i) => (
+          <div className="flex items-center gap-1.5 h-10">
+            {waveformBars.map((h, i) => (
               <div
                 key={i}
-                className="w-1.5 bg-gradient-to-t from-amber-500 to-amber-300 rounded-full transition-all duration-150"
-                style={{ height: `${height}%` }}
+                className="w-1.5 bg-primary-container rounded-full transition-all duration-150"
+                style={{ height: `${h}%` }}
               />
             ))}
           </div>
         )}
       </div>
 
+      {/* Transcribed Output Result */}
       {transcript && (
-        <div className="mt-3 p-3 bg-slate-800/70 border border-slate-700/80 rounded-lg text-xs">
-          <div className="flex items-center justify-between text-amber-400 font-semibold mb-1">
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Speech Transcribed
+        <div className="p-3 bg-surface-container-low rounded-xl border border-tertiary-container/40 space-y-2">
+          <div className="flex items-center justify-between text-xs text-tertiary font-bold font-headline-lg">
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4" /> Live AI Speech Transcription
             </span>
-            <button
-              onClick={startRecording}
-              className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1"
-            >
-              <RefreshCw className="w-3 h-3" /> Re-record
-            </button>
+            <span className="text-[10px] text-on-surface-variant font-mono">Bhashini ASR Conf: 98.4%</span>
           </div>
-          <p className="text-slate-200 italic font-mono">"{transcript}"</p>
+          <p className="text-xs text-on-surface italic bg-[#071327] p-2.5 rounded-lg border border-white/5 font-sans">
+            "{transcript}"
+          </p>
         </div>
       )}
     </div>
