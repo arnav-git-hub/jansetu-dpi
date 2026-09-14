@@ -41,6 +41,15 @@ export const PolicymakerDashboard: React.FC<PolicymakerDashboardProps> = ({
   const [showCopilot, setShowCopilot] = useState(false);
   const [showElderStory, setShowElderStory] = useState(false);
 
+  useEffect(() => {
+    setSelectedHotspot((current) => {
+      if (current && hotspots.some((hotspot) => hotspot.id === current.id)) {
+        return hotspots.find((hotspot) => hotspot.id === current.id) || hotspots[0] || null;
+      }
+      return hotspots[0] || null;
+    });
+  }, [hotspots]);
+
   // Live Cost of Inaction Ticker
   const [costOfInactionCr, setCostOfInactionCr] = useState<number>(482.4);
 
@@ -166,7 +175,7 @@ export const PolicymakerDashboard: React.FC<PolicymakerDashboardProps> = ({
             Active Hotspots
           </div>
           <div className="text-3xl md:text-4xl font-bold font-headline-lg text-error">
-            {hotspots.length > 0 ? (hotspots.length * 156).toLocaleString() : '1,248'}
+            {hotspots.length.toLocaleString()}
           </div>
           <p className="text-[11px] text-on-surface-variant mt-2">Aggregated from 14 Indian languages</p>
         </div>
@@ -269,6 +278,15 @@ export const PolicymakerDashboard: React.FC<PolicymakerDashboardProps> = ({
                   <div
                     key={h.id}
                     onClick={() => setSelectedHotspot(h)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setSelectedHotspot(h);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isSelected}
                     className={`bg-surface-container-low p-4 rounded-lg border-l-4 ${borderColor} flex flex-col gap-2 hover:bg-surface-container-highest transition-all cursor-pointer ${
                       isSelected ? 'ring-1 ring-primary-container bg-surface-container-high' : ''
                     }`}
@@ -328,6 +346,7 @@ export const PolicymakerDashboard: React.FC<PolicymakerDashboardProps> = ({
             <div className="mt-4 pt-3 border-t border-white/5">
               <button
                 onClick={() => setActiveDprHotspot(selectedHotspot || hotspots[0])}
+                disabled={!selectedHotspot}
                 className="w-full bg-primary-container text-on-primary-container font-headline-lg text-sm py-3 rounded-lg hover:opacity-90 transition-opacity font-bold shadow-lg flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-lg">description</span>

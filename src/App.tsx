@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   LanguageCode,
   CitizenReport,
@@ -40,18 +40,21 @@ export const App: React.FC = () => {
   const [isEquityLensActive, setIsEquityLensActive] = useState<boolean>(false);
   const [isDisasterMode, setIsDisasterMode] = useState<boolean>(false);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOGS);
+  const hotspotsRef = useRef(hotspots);
+  const auditLogsRef = useRef(auditLogs);
+
+  useEffect(() => {
+    hotspotsRef.current = hotspots;
+  }, [hotspots]);
+
+  useEffect(() => {
+    auditLogsRef.current = auditLogs;
+  }, [auditLogs]);
 
   // Monitor network online/offline status
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      // Auto flush offline queue when coming back online
-      const queued = getOfflineQueuedReports();
-      if (queued.length > 0) {
-        queued.forEach((r) => handleAddNewReport(r));
-        clearOfflineQueue();
-        setOfflineQueueCount(0);
-      }
     };
 
     const handleOffline = () => {
@@ -82,7 +85,7 @@ export const App: React.FC = () => {
   }, [weights, isEquityLensActive, isDisasterMode]);
 
   // Handler for new citizen report submission
-  const handleAddNewReport = async (report: CitizenReport) => {
+  const handleAddNewReport = useCallback(async (report: CitizenReport) => {
     if (!isOnline) {
       saveOfflineReport(report);
       setOfflineQueueCount((prev) => prev + 1);
@@ -90,7 +93,7 @@ export const App: React.FC = () => {
     }
 
     // 1. Cluster report into DBSCAN demand hotspots
-    const { updatedHotspots, targetHotspotId } = clusterNewReport(report, hotspots, weights);
+    const { updatedHotspots, targetHotspotId } = clusterNewReport(report, hotspotsRef.current, weights);
     
     // Sort hotspots by recalculated priority score
     const sorted = [...updatedHotspots].sort((a, b) => b.priorityScore - a.priorityScore);
@@ -98,14 +101,31 @@ export const App: React.FC = () => {
 
     // 2. Append SHA-256 Hash Chain Audit Entry
     const newLogs = await appendAuditLog(
-      auditLogs,
+      auditLogsRef.current,
       'REQUEST_CREATED',
       report.id,
       `New citizen report (${report.language}) fused into Hotspot ${targetHotspotId}. PII scrubbed: ${report.piiScrubbed}`,
       `Device ${report.channel}`
     );
+    auditLogsRef.current = newLogs;
     setAuditLogs(newLogs);
-  };
+  }, [isOnline, weights]);
+
+  const flushOfflineQueue = useCallback(async () => {
+    const queued = getOfflineQueuedReports();
+    if (!isOnline || queued.length === 0) return;
+
+    for (const report of queued) {
+      await handleAddNewReport(report);
+    }
+
+    clearOfflineQueue();
+    setOfflineQueueCount(0);
+  }, [handleAddNewReport, isOnline]);
+
+  useEffect(() => {
+    void flushOfflineQueue();
+  }, [flushOfflineQueue]);
 
   // Handler for weights adjustment
   const handleWeightChange = async (newWeights: PriorityWeights) => {
@@ -113,12 +133,13 @@ export const App: React.FC = () => {
 
     // Append Audit Entry for Weight recalculation
     const updatedAudit = await appendAuditLog(
-      auditLogs,
+      auditLogsRef.current,
       'PRIORITY_RECALCULATED',
       'ENGINE-KERNEL',
       `Weights adjusted: w1=${newWeights.w1_population.toFixed(2)}, w2=${newWeights.w2_severity.toFixed(2)}, w3=${newWeights.w3_infraGap.toFixed(2)}, w4=${newWeights.w4_equityWeight.toFixed(2)}`,
       'Policymaker Console'
     );
+    auditLogsRef.current = updatedAudit;
     setAuditLogs(updatedAudit);
   };
 

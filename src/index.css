@@ -7,10 +7,36 @@
     @apply bg-background text-on-surface font-sans antialiased selection:bg-primary-container selection:text-background;
     background-color: #071327;
     color: #d7e2ff;
+    min-width: 320px;
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Public Sans', 'Inter', sans-serif;
+  }
+
+  button,
+  a,
+  select,
+  input,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid #6fd8c8;
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 

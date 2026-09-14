@@ -32,7 +32,9 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({ hotspots }) => {
   const totalBeneficiaries = hotspots.reduce((acc, h) => acc + h.totalAffectedPopulation, 0);
   const totalBudgetLakhs = hotspots.reduce((acc, h) => acc + h.estimatedCostLakhs, 0);
   const totalCO2 = hotspots.reduce((acc, h) => acc + (h.co2SavedTonsPerYear || 0), 0);
-  const avgROI = (hotspots.reduce((acc, h) => acc + (h.economicROIMultiplier || 0), 0) / hotspots.length).toFixed(1);
+  const avgROI = hotspots.length > 0
+    ? (hotspots.reduce((acc, h) => acc + (h.economicROIMultiplier || 0), 0) / hotspots.length).toFixed(1)
+    : '0.0';
   const fundedCount = hotspots.filter(h => h.status === 'APPROVED_FUNDED' || h.status === 'DELIVERED').length;
   const statesCount = new Set(hotspots.map(h => h.state)).size;
 
@@ -187,6 +189,25 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({ hotspots }) => {
           </div>
         ))}
       </div>
+      {filtered.length === 0 && (
+        <div className="bg-[#1B263B] border border-dashed border-white/15 rounded-xl p-10 text-center">
+          <Search className="w-8 h-8 mx-auto text-on-surface-variant mb-3" />
+          <h3 className="font-bold text-on-surface">No matching infrastructure requests</h3>
+          <p className="text-sm text-on-surface-variant mt-1">
+            Try a different search term or reset the sector filter.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery('');
+              setFilterCategory('ALL');
+            }}
+            className="mt-4 px-4 py-2 rounded-lg bg-primary-container text-on-primary-container text-sm font-bold hover:opacity-90 transition-opacity"
+          >
+            Reset filters
+          </button>
+        </div>
+      )}
     </div>
   );
 };
